@@ -17,21 +17,6 @@ Therefore it can't be used with the dynamic bridge if no other subscribers are p
 As an alternative you can use the `--bridge-all-2to1-topics` option to bridge all ROS 2 topics to ROS 1 so that tools such as `rostopic echo`, `rostopic list` and `rqt` will see the topics even if there are no matching ROS 1 subscribers.
 Run `ros2 run ros1_bridge dynamic_bridge -- --help` for more options.
 
-## Supported ROS and Ubuntu Versions
-
-> ⚠️ **Important Compatibility Notice**
-
-- `ros1_bridge` **requires ROS 1**, which has reached [end-of-life (EOL)](https://reps.openrobotics.org/rep-0003/#noetic-ninjemys-may-2020-may-2025) as of **May 2025** for ROS Noetic.
-- Ubuntu **24.04 LTS** does **not support ROS 1**, and therefore is **not compatible** with `ros1_bridge`.
-
-| Ubuntu Version | Supported ROS 1 Versions  | Supported ROS 2 Versions              | `ros1_bridge` Support            |
-|----------------|----------------|---------------------------------------|----------------------------------|
-| 20.04 (Focal)  | Noetic Ninjemys   | Foxy Fitzroy (EOL), Galactic Geochelone (EOL), Humble Hawksbill    | ✅ Full support                  |
-| 22.04 (Jammy)  | ⚠️ Partial (unsupported officially) | Humble Hawksbill, Iron Irwini | ⚠️ Requires building from source |
-| 24.04 (Noble)  | ❌ Not available | Jazzy Jalisco, Kilted Kaiju          | ❌ Not supported                 |
-
-To use `ros1_bridge`, you must use a system where both ROS 1 and ROS 2 are installable and buildable. Mixing ROS distributions across unsupported Ubuntu versions is **not recommended** and may lead to broken builds or missing dependencies.
-
 ## Prerequisites
 
 In order to run the bridge you need to either:
@@ -61,7 +46,7 @@ To run the following examples you will also need these ROS 1 packages:
 
 ### Prerequisites for the examples in this file
 
-In order to make the examples below portable between versions of ROS, we define two environment variables, `ROS1_INSTALL_PATH` and `ROS2_INSTALL_PATH`.
+In order to make the examples below portable between versions of ROS, we define two environment variables, `ROS1_INSTALL_PATH` and `ROS2_INSTALL_PATH`. 
 These are defined as the paths to the installation location of their respective ROS versions.
 
 If you installed Noetic in the default location, then the definition of `ROS1_INSTALL_PATH` will be `/opt/ros/noetic`.
@@ -517,3 +502,51 @@ topics:
 ```
 
 Note that the `qos` section can be omitted entirely and options not set are left default.
+
+# Action bridge
+
+This bridge extends the `ros1_bridge` to support actions. The bridge works in both directions, meaning an action goal can be sent from ROS 1 client to ROS 2 server, or from ROS 2 client to ROS 1 server.
+
+The arguments for the `action_bridge` node are:  
+`direction`: from client (`ros1` or `ros2`)
+e.g.:
+- `ROS1` client to `ROS2` server --> `direction` = `ros1`
+- `ROS2` client to `ROS1` server --> `direction` = `ros2`  
+
+`package`: package of the `ROS1` server node  
+`type`: action interface type of `ROS1`  
+`name`: action name
+
+For sending goals from a ROS 2 action client to a ROS 1 action server
+```
+# Terminal 1 -- action bridge
+# Make sure roscore is already running
+source <ros1_bridge-install-dir>/setup.bash
+ros2 run ros1_bridge action_bridge ros1 actionlib_tutorials Fibonacci fibonacci
+
+# Terminal 2 -- ROS 1 action server
+source <ros1-install-dir>/setup.bash
+rosrun actionlib_tutorials fibonacci_server
+
+# Terminal 3 -- ROS 2 action client
+source <ros2-install-dir>/setup.bash
+ros2 run action_tutorials_cpp fibonacci_action_client 20
+```
+
+For sending goals from a ROS 1 action client to a ROS 2 action server
+```
+# Terminal 1 -- action bridge
+# Make sure roscore is already running
+source <ros1_bridge-install-dir>/setup.bash
+ros2 run ros1_bridge action_bridge ros2 action_tutorials_interfaces action/Fibonacci fibonacci
+
+# Terminal 2 -- ROS 2 action server
+source <ros2-install-dir>/setup.bash
+ros2 run action_tutorials_cpp fibonacci_action_server
+
+# Terminal 3 -- ROS 1 action client
+source <ros1-install-dir>/setup.bash
+rosrun actionlib_tutorials fibonacci_client 20
+```
+
+`dynamic_bridge` has been extended to handle actions as well.
