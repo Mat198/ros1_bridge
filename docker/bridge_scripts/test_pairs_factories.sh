@@ -1,0 +1,1 @@
+ros2 run ros1_bridge ros1_bridge_generate_factories --output-path output --template-dir src/ros1_bridge/resource

@@ -1,0 +1,140 @@
+FROM ros:humble-ros-base
+
+SHELL ["/bin/bash", "-c"]
+
+###########################
+# 1.) Bring system up to the latest ROS desktop configuration
+###########################
+
+RUN apt-get -y update && \
+    apt-get -y upgrade && \ 
+    apt-get -y install \ 
+        pip \
+        ros-humble-rmw-cyclonedds-cpp \
+        # Por que a bridge precisa do RVIZ? Mistério. Não compila sem ele
+        ros-humble-rviz2 \
+        ros-humble-grid-map-msgs \
+        ros-humble-ouster-msgs \
+        ros-humble-geographic-msgs \
+        # Why no msg pkg robot-localization? :(
+        ros-humble-robot-localization
+
+RUN pip3 install rospy_message_converter
+    
+# Its importante to set the cyclone dds rmw. The bridge doesn't work well on the default fast dds.
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
+###########################
+# 2.) Temporarily remove ROS2 apt repository (Required to install ROS 1)
+###########################
+RUN mv /etc/apt/sources.list.d/ros2.sources /root/ && apt-get update
+
+###########################
+# 3.) comment out the catkin conflict
+###########################
+RUN sed  -i -e 's|^Conflicts: catkin|#Conflicts: catkin|' /var/lib/dpkg/status && \ 
+    apt-get install -f
+
+###########################
+# 4.) force install these packages
+###########################
+RUN apt-get download python3-catkin-pkg && \
+    apt-get download python3-rospkg && \
+    apt-get download python3-rosdistro && \
+    dpkg --force-overwrite -i python3-catkin-pkg*.deb && \
+    dpkg --force-overwrite -i python3-rospkg*.deb && \
+    dpkg --force-overwrite -i python3-rosdistro*.deb && \
+    apt-get install -f && \
+    rm python3-catkin-pkg*.deb python3-rospkg*.deb python3-rosdistro*.deb
+
+###########################
+# 5.) Install the latest ROS1 desktop configuration
+# see https://packages.ubuntu.com/jammy/ros-desktop-dev
+# note: ros-desktop-dev automatically includes tf tf2
+###########################
+RUN apt-get -y install ros-desktop-dev
+
+# Fix ARM64 pkgconfig path issue -- Fix provided by ambrosekwok 
+RUN if [[ $(uname -m) = "arm64" || $(uname -m) = "aarch64" ]]; then                     \
+      cp /usr/lib/x86_64-linux-gnu/pkgconfig/* /usr/lib/aarch64-linux-gnu/pkgconfig/;   \
+    fi
+
+###########################
+# 6.) Restore the ROS2 apt repos.
+###########################
+RUN mv /root/ros2.sources /etc/apt/sources.list.d/ && apt-get -y update
+
+###########################
+# 7.1) Compile and install ROS 1 message packages (must end with _msgs)
+###########################
+# We MUST compile the ROS 1 packages before ROS 2 source
+
+WORKDIR /ros1_msgs_ws
+COPY ../ros1_msgs /ros1_msgs_ws/src
+RUN unset ROS_DISTRO && \
+    colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release && \
+    rm -r  /ros1_msgs_ws/src /ros1_msgs_ws/build /ros1_msgs_ws/log 
+ 
+###########################
+# 7.2) Compile and install ROS2 message packages (must end with _msgs)
+###########################
+
+WORKDIR /ros2_msgs_ws
+COPY ../ros2_msgs /ros2_msgs_ws/src
+COPY ../bridge_mappings /ros2_msgs_ws/src/bridge_mappings
+RUN source /opt/ros/humble/setup.bash && \
+    colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release && \
+    rm -r  /ros2_msgs_ws/src /ros2_msgs_ws/build /ros2_msgs_ws/log
+
+###########################
+# 8.) Compile ros1_bridge 
+###########################
+# ROS 1 and ROS 2 must be sourced before the bridge build
+
+WORKDIR /bridge_ws
+COPY ../bin /bridge_ws/src/ros1_bridge/bin
+COPY ../include /bridge_ws/src/ros1_bridge/include
+COPY ../resource /bridge_ws/src/ros1_bridge/resource
+COPY ../ros1_bridge /bridge_ws/src/ros1_bridge/ros1_bridge
+COPY ../scripts /bridge_ws/src/ros1_bridge/scripts
+COPY ../src /bridge_ws/src/ros1_bridge/src
+COPY ../test /bridge_ws/src/ros1_bridge/test
+COPY ../cmake /bridge_ws/src/ros1_bridge/cmake
+COPY ../CMakeLists.txt /bridge_ws/src/ros1_bridge/CMakeLists.txt
+COPY ../package.xml /bridge_ws/src/ros1_bridge/package.xml
+
+# Source ROS 1, ROS 1 msgs, ROS 2, ROS 2 msgs in that order
+# Note: ROS 1 source is not explicit. It's active by default. (Mysterious ros-desktop-dev package?) 
+RUN source /ros1_msgs_ws/install/setup.bash && \ 
+    source /opt/ros/humble/setup.bash && \
+    source /ros2_msgs_ws/install/setup.bash && \
+    colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release && \
+    rm -r  /bridge_ws/src /bridge_ws/build /bridge_ws/log
+
+###########################
+# 9.) Clean up
+###########################
+RUN apt-get -y clean all && apt-get -y update
+
+###########################
+# 10.) Final setup
+###########################
+# Variable to set rosmaster network
+ENV ROS_MASTER_URI=http://localhost:11311
+# Set ROS 2 DDS domain ID
+ENV ROS_DOMAIN_ID=1
+
+# Adiciona script principal de execução
+COPY docker/bridge_scripts/run_bridge.sh /run_bridge.sh
+RUN sudo chmod 755 /run_bridge.sh
+# Adiciona script para conversão de bags
+COPY docker/bridge_scripts/convert_bag.sh /convert_bag.sh
+RUN sudo chmod 755 /convert_bag.sh
+
+# Adiciona demais scripts de desenvolvimento
+COPY docker/bridge_scripts/source_bridge.sh /bridge_ws/source_bridge.sh
+COPY docker/bridge_scripts/print_pairs.sh /bridge_ws/print_pairs.sh
+COPY docker/bridge_scripts/test_pairs_factories.sh /bridge_ws/test_pairs_factories.sh
+
+ENTRYPOINT [""] 
+CMD ["bash"]
