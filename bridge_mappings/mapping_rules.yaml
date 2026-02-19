@@ -1,0 +1,37 @@
+- enable_foreign_mappings: true
+  ros1_package_name: ouster_ros
+  ros2_package_name: ouster_sensor_msgs
+  
+- enable_foreign_mappings: true
+  ros1_package_name: robot_localization
+  ros1_service_name: FromLL
+  ros2_package_name: robot_localization
+  ros2_service_name: FromLL
+
+- enable_foreign_mappings: true
+  ros1_package_name: robot_localization
+  ros1_service_name: SetDatum
+  ros2_package_name: robot_localization
+  ros2_service_name: SetDatum
+
+- enable_foreign_mappings: true
+  ros1_package_name: robot_localization
+  ros1_service_name: SetPose
+  ros2_package_name: robot_localization
+  ros2_service_name: SetPose
+
+- enable_foreign_mappings: true
+  ros1_package_name: robot_localization
+  ros1_service_name: ToLL
+  ros2_package_name: robot_localization
+  ros2_service_name: ToLL
+
+- enable_foreign_mappings: true
+  ros1_package_name: robot_localization
+  ros1_service_name: ToggleFilterProcessing
+  ros2_package_name: robot_localization
+  ros2_service_name: ToggleFilterProcessing
+
+- enable_foreign_mappings: true
+  ros1_package_name: std_srvs
+  ros2_package_name: std_srvs
