@@ -1,0 +1,22 @@
+FROM osrf/ros:humble-desktop
+
+SHELL ["/bin/bash", "-c"]
+
+RUN apt-get -y update && \
+    apt-get -y upgrade && \ 
+    apt-get -y install \ 
+        # RVIZ dependencies
+        libgl1-mesa-dev \
+        freeglut3-dev \
+        ros-humble-rmw-cyclonedds-cpp \
+        ros-humble-example-interfaces
+
+# Its importante to set the cyclone dds rmw. The bridge doesn't work well on the default fast dds.
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
+WORKDIR /ros2_msgs_ws/
+COPY ros2_msgs /ros2_msgs_ws/src
+RUN source /opt/ros/humble/setup.bash && \
+    colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+CMD ["bash"]

@@ -1,0 +1,12 @@
+FROM osrf/ros:noetic-desktop
+
+SHELL ["/bin/bash", "-c"]
+
+RUN apt-get -y update && apt-get -y upgrade
+
+WORKDIR /ros1_msgs_ws
+COPY ros1_msgs /ros1_msgs_ws/src
+RUN source /opt/ros/noetic/setup.bash && \
+    catkin_make install -j8 -DCMAKE_BUILD_TYPE=Release -DCATKIN_ENABLE_TESTING=0
+
+CMD ["bash"]
