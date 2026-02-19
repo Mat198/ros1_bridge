@@ -1,3 +1,21 @@
+# Docker
+
+Build docker:
+
+```bash
+cd ros1_bridge
+source docker/build_bridge_docker.sh
+```
+
+Run docker without roscore. Roscore should be running in another docker.
+
+```bash
+cd ros1_bridge
+source docker/run_bridge.sh source /run_bridge.sh
+```
+
+To add new messages, edit the file `docker/build_bridge_docker.sh` and the `docker/Dockerfile.bridge`.
+
 # Bridge communication between ROS 1 and ROS 2
 
 This package provides a network bridge which enables the exchange of messages between ROS 1 and ROS 2.
