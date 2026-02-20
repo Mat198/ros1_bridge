@@ -96,7 +96,6 @@ COPY ../bin /bridge_ws/src/ros1_bridge/bin
 COPY ../include /bridge_ws/src/ros1_bridge/include
 COPY ../resource /bridge_ws/src/ros1_bridge/resource
 COPY ../ros1_bridge /bridge_ws/src/ros1_bridge/ros1_bridge
-COPY ../scripts /bridge_ws/src/ros1_bridge/scripts
 COPY ../src /bridge_ws/src/ros1_bridge/src
 COPY ../test /bridge_ws/src/ros1_bridge/test
 COPY ../cmake /bridge_ws/src/ros1_bridge/cmake
